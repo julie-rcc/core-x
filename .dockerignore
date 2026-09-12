@@ -1,0 +1,7 @@
+audio/
+turns/
+__pycache__/
+*.pyc
+.git/
+manifest.csv
+features.csv
