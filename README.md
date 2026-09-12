@@ -4,10 +4,7 @@ Solución para el reto de Altur en HackMTY 2026: dado el audio de una llamada
 a un agente bancario de IA, decidir si quien llama es una persona real o un
 caller sintético.
 
-> **Nota de equipo:** ya existía una carpeta [`Backend/`](Backend/) con un
-> `index.py` vacío antes de subir este código. Falta coordinar con quien la
-> haya creado para no duplicar esfuerzo — ver sección
-> [Pendientes](#pendientes-antes-de-la-entrega).
+> Todo el código vive en [`Backend/`](Backend/).
 
 ## Cómo funciona
 
@@ -35,6 +32,8 @@ audio WAV (8kHz, estéreo) -> VAD (vad.py) -> turnos de habla por canal
 
 ## Estructura del repo
 
+Todo dentro de [`Backend/`](Backend/):
+
 | Archivo | Qué hace |
 |---|---|
 | `app.py` | Servidor FastAPI — expone `POST /detect` y `GET /health` |
@@ -46,15 +45,17 @@ audio WAV (8kHz, estéreo) -> VAD (vad.py) -> turnos de habla por canal
 | `inspect_data.py` | Inspección rápida del dataset (balance de clases, archivos faltantes) |
 | `manifest.csv`, `turns/` | Dataset del challenge (labels + turnos precomputados) |
 | `detector.pkl` | Modelo entrenado, listo para servir |
+| `Dockerfile`, `.dockerignore` | Imagen del servidor |
 
-`audio/` (los WAV crudos, ~1.6GB) está en `.gitignore` — se descarga aparte
-desde el release `altur-challenge-audio.zip` del repo del challenge.
+`Backend/audio/` (los WAV crudos, ~1.6GB) está en `.gitignore` — se descarga
+aparte desde el release `altur-challenge-audio.zip` del repo del challenge.
 
 ## Cómo correrlo
 
 ### Local
 
 ```bash
+cd Backend
 pip install -r requirements.txt
 python -m uvicorn app:app --host 0.0.0.0 --port 8000
 ```
@@ -62,12 +63,14 @@ python -m uvicorn app:app --host 0.0.0.0 --port 8000
 Probar un audio suelto sin servidor:
 
 ```bash
+cd Backend
 python predict.py audio/algun_call.wav
 ```
 
 ### Docker
 
 ```bash
+cd Backend
 docker build -t core-x-detector .
 docker run -p 8000:8000 core-x-detector
 ```
@@ -78,6 +81,7 @@ docker run -p 8000:8000 core-x-detector
 ### Reentrenar el modelo
 
 ```bash
+cd Backend
 python build_dataset.py   # manifest.csv + turns/ -> features.csv
 python train.py           # features.csv -> detector.pkl
 ```
@@ -116,7 +120,6 @@ o audio no estéreo.
 - [ ] **Confirmar con los organizadores** el nombre exacto del campo JSON
       del audio, y cómo van a invocar el endpoint (¿URL pública?, ¿Docker?,
       ¿límite de tiempo de respuesta?).
-- [ ] **Coordinar con el equipo** qué va en `Backend/` vs. la raíz del repo.
 - [ ] Probar el build de Docker (no disponible en la máquina donde se
       desarrolló esto).
 - [ ] El AUC (~0.99) se validó contra el propio dataset de entrenamiento; no
