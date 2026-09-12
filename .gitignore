@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# audio crudo del dataset (1.6GB, distribuido aparte por los organizadores
+# como altur-challenge-audio.zip) -- no debe ir al repo
+audio/

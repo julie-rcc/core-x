@@ -1,0 +1,8 @@
+fastapi==0.136.1
+uvicorn==0.47.0
+pandas==3.0.3
+numpy==2.4.6
+scikit-learn==1.8.0
+joblib==1.5.3
+soundfile==0.14.0
+silero-vad==6.2.1
