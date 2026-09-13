@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Altur — Detector de llamante</title>
+<style>
+  :root {
+    --bg: #0e1420;
+    --panel: #161e2e;
+    --panel-border: #26314a;
+    --text: #e9edf5;
+    --muted: #8492ab;
+    --gold: #d4a94f;
+    --human: #4fbf8b;
+    --synth: #e2604f;
+    --mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 20% 0%, rgba(212,169,79,0.06), transparent 45%);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .wrap { width: 100%; max-width: 560px; }
+  .eyebrow {
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  #drop {
+    border: 1.5px dashed #384867;
+    border-radius: 10px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  #drop:hover, #drop.over {
+    border-color: var(--gold);
+    background: rgba(212,169,79,0.05);
+  }
+  #drop svg { opacity: 0.55; margin-bottom: 10px; }
+  #drop .main-txt { font-size: 15px; margin-bottom: 4px; }
+  #drop .sub-txt { font-size: 12.5px; color: var(--muted); }
+  input[type=file] { display: none; }
+
+  #filename {
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    display: none;
+    word-break: break-all;
+  }
+
+  #result { margin-top: 22px; display: none; }
+  .verdict-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .verdict {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .verdict.human { color: var(--human); }
+  .verdict.synth { color: var(--synth); }
+  .conf-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .bar-track {
+    height: 8px;
+    border-radius: 5px;
+    background: #232d42;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.5s ease;
+  }
+  .bar-fill.human { background: var(--human); }
+  .bar-fill.synth { background: var(--synth); }
+
+  #status {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--muted);
+    display: none;
+    text-align: center;
+  }
+  .spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid #384867;
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -2px;
+    margin-right: 7px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--synth);
+    background: rgba(226,96,79,0.08);
+    border: 1px solid rgba(226,96,79,0.25);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: none;
+    line-height: 1.5;
+  }
+
+  .foot {
+    margin-top: 18px;
+    font-size: 12px;
+    color: #4d5b78;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">ALTUR CHALLENGE — HACKMTY26</div>
+  <h1>¿Quién está llamando?</h1>
+  <p class="sub">Sube una grabación (WAV estéreo, canal 0 = llamante) y el modelo decide si quien llama es una persona real o una voz sintética.</p>
+
+  <div class="panel">
+    <div id="drop">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#8492ab" stroke-width="1.5">
+        <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="main-txt">Arrastra un archivo .wav aquí</div>
+      <div class="sub-txt">o haz clic para elegirlo</div>
+    </div>
+    <input type="file" id="file-input" accept=".wav,audio/wav">
+    <div id="filename"></div>
+
+    <div id="status"><span class="spinner"></span><span id="status-text">Analizando…</span></div>
+    <div id="error"></div>
+
+    <div id="result">
+      <div class="verdict-row">
+        <span id="verdict-text" class="verdict"></span>
+        <span id="conf-text" class="conf-label"></span>
+      </div>
+      <div class="bar-track"><div id="bar-fill" class="bar-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="foot">Endpoint: altur-challenge.onrender.com/detect — la primera llamada puede tardar ~40s si el servidor estaba dormido.</div>
+</div>
+
+<script>
+const ENDPOINT = "https://altur-challenge.onrender.com/detect";
+
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file-input');
+const filenameEl = document.getElementById('filename');
+const statusEl = document.getElementById('status');
+const statusTextEl = document.getElementById('status-text');
+const errorEl = document.getElementById('error');
+const resultEl = document.getElementById('result');
+const verdictText = document.getElementById('verdict-text');
+const confText = document.getElementById('conf-text');
+const barFill = document.getElementById('bar-fill');
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  drop.classList.remove('over');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function handleFile(file) {
+  filenameEl.textContent = file.name + "  (" + (file.size / 1024 / 1024).toFixed(2) + " MB)";
+  filenameEl.style.display = 'block';
+  resultEl.style.display = 'none';
+  errorEl.style.display = 'none';
+  statusEl.style.display = 'block';
+  statusTextEl.textContent = 'Codificando audio…';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const b64 = arrayBufferToBase64(buf);
+
+    statusTextEl.textContent = 'Analizando… (si el servidor estaba dormido, puede tardar hasta 40s)';
+
+    const resp = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audio_base64: b64 })
+    });
+
+    if (!resp.ok) {
+      let detail = resp.statusText;
+      try { const j = await resp.json(); detail = j.detail || detail; } catch (_) {}
+      throw new Error(`(${resp.status}) ${detail}`);
+    }
+
+    const data = await resp.json();
+    statusEl.style.display = 'none';
+    showResult(data);
+  } catch (err) {
+    statusEl.style.display = 'none';
+    errorEl.textContent = 'No se pudo analizar el audio: ' + err.message;
+    errorEl.style.display = 'block';
+  }
+}
+
+function showResult(data) {
+  const isSynth = !!data.is_synthetic;
+  const conf = typeof data.confidence === 'number' ? data.confidence : null;
+
+  verdictText.textContent = isSynth ? 'SINTÉTICO (IA)' : 'HUMANO';
+  verdictText.className = 'verdict ' + (isSynth ? 'synth' : 'human');
+
+  if (conf !== null) {
+    confText.textContent = (conf * 100).toFixed(1) + '% confianza';
+    barFill.style.width = (conf * 100).toFixed(1) + '%';
+  } else {
+    confText.textContent = '';
+    barFill.style.width = '0%';
+  }
+  barFill.className = 'bar-fill ' + (isSynth ? 'synth' : 'human');
+
+  resultEl.style.display = 'block';
+}
+</script>
+</body>
+</html>
